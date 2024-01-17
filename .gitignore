@@ -62,3 +62,4 @@ venv.bak/
 
 .DS_Store
 .vscode/
+*.xml
