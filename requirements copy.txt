@@ -6,5 +6,3 @@ selenium>=4.8.2
 tqdm
 lxml
 cleantext
-errno
-os
