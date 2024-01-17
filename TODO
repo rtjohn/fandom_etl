@@ -1,0 +1,4 @@
+Submit everything to a new Github repo
+Separate cleaning functions
+Add cleaning functions to run-me.sh bash script
+Confirm file organization of wikiextractor.  Should incoporate cleaning functions and ScrapeFandom functions.  Need to check if moving the folders impacts the overall functionality
