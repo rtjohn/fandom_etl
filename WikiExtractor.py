@@ -335,10 +335,10 @@ def collect_pages(text):
             redirect = False
 
 
-def process_dump(input_file, template_file, out_file, file_size, file_compress,
+def process_dump(input_file_path, template_file, out_file, file_size, file_compress,
                  process_count, html_safe, expand_templates=True):
     """
-    :param input_file: name of the wikipedia dump file; '-' to read from stdin
+    :param input_file_path: name of the wikipedia dump file; '-' to read from stdin
     :param template_file: optional file with template definitions.
     :param out_file: directory where to store extracted data, or '-' for stdout
     :param file_size: max size of each extracted file, or None for no max (one file)
@@ -353,7 +353,7 @@ def process_dump(input_file, template_file, out_file, file_size, file_compress,
 
     urlbase = ''                # This is obtained from <siteinfo>
 
-    input = decode_open(input_file)
+    input = decode_open(input_file_path)
 
     # collect siteinfo
     for line in input:
@@ -387,13 +387,13 @@ def process_dump(input_file, template_file, out_file, file_size, file_compress,
             templates = load_templates(file)
             file.close()
         else:
-            if input_file == '-':
+            if input_file_path == '-':
                 # can't scan then reset stdin; must error w/ suggestion to specify template_file
                 raise ValueError("to use templates with stdin dump, must supply explicit template-file")
-            logging.info("Preprocessing '%s' to collect template definitions: this may take some time.", input_file)
+            logging.info("Preprocessing '%s' to collect template definitions: this may take some time.", input_file_path)
             templates = load_templates(input, template_file)
             input.close()
-            input = decode_open(input_file)
+            input = decode_open(input_file_path)
         template_load_elapsed = default_timer() - template_load_start
         logging.info("Loaded %d templates in %.1fs", templates, template_load_elapsed)
 
@@ -406,7 +406,7 @@ def process_dump(input_file, template_file, out_file, file_size, file_compress,
         output = OutputSplitter(nextFile, file_size, file_compress)
 
     # process pages
-    logging.info("Starting page extraction from %s.", input_file)
+    logging.info("Starting page extraction from %s.", input_file_path)
     extract_start = default_timer()
 
     # Parallel Map/Reduce:
@@ -576,7 +576,9 @@ def main():
     groupS.add_argument("-v", "--version", action="version",
                         version='%(prog)s ' + __version__,
                         help="print program version")
-
+    # Added this in so this script can know where to output the files    
+    parser.add_argument('output_dir', help='Output directory path', default='.')
+    
     args = parser.parse_args()
 
     Extractor.keepLinks = args.links
@@ -607,7 +609,7 @@ def main():
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
-    input_file = args.input
+    input_file_path = os.path.join(args.output_dir, args.input)  # Assuming 'args.input' is the variable for the XML filename
 
     if not Extractor.keepLinks:
         ignoreTag('a')
@@ -623,12 +625,15 @@ def main():
                     load_templates(file)
 
         urlbase = ''
-        with open(input_file) as input:
+        with open(  ) as input:
             for id, revid, title, page in collect_pages(input):
                 Extractor(id, revid, urlbase, title, page).extract(sys.stdout)
         return
+    
+    # Creating the directory to write out to
+    filename_without_xml = args.input.rstrip('.xml')
+    output_path = os.path.join(args.output_dir, filename_without_xml+"_processed")
 
-    output_path = args.output
     if output_path != '-' and not os.path.isdir(output_path):
         try:
             os.makedirs(output_path)
@@ -636,7 +641,7 @@ def main():
             logging.error('Could not create: %s', output_path)
             return
 
-    process_dump(input_file, args.templates, output_path, file_size,
+    process_dump(input_file_path, args.templates, output_path, file_size,
                  args.compress, args.processes, args.html_safe, not args.no_templates)
 
 if __name__ == '__main__':
