@@ -16,10 +16,11 @@ fi
 # Get the step and directory path arguments
 step="$1"
 dir_path="$2"
-shift 2
+fandom="$3"
+#shift 2
 
 # Loop through the values and run the commands for each value
-for value in "$@"; do
+for f in "$3"; do
     echo "--------------------------------------------------"
     echo "Processing: $value"
     echo "--------------------------------------------------"
@@ -27,35 +28,36 @@ for value in "$@"; do
     # Check the step argument and execute the corresponding step
     if [ "$step" = "1" ] || [ "$step" = "all" ]; then
         # Step 1: Run Python script to scrape fandom with directory path
-        echo "Step 1: Scraping data for $value into $dir_path..."
-        python3 ScrapeFandom.py "$value" "$dir_path"
-        echo "Scraping completed for $value."
+        echo "Step 1: Scraping data for $fandom into $dir_path..."
+        python3 ScrapeFandom.py "$fandom" "$dir_path"
+        echo "Scraping completed for $fandom."
     fi
 
     if [ "$step" = "2" ] || [ "$step" = "all" ]; then
         # Step 2: Run wikiextractor with necessary options
-        echo "Step 2: Extracting data from $value.xml..."
-        python3 WikiExtractor.py "$value.xml" "$dir_path" --no-templates -l --json -o "$value"
-        echo "Data extraction completed for $value.xml."
+
+        # This script seems to be removing tables from content.  This sometimes leaves pages empty
+        echo "Step 2: Extracting data from $fandom.xml..."
+        python3 WikiExtractor.py "$fandom.xml" "$dir_path" --no-templates -l --json -o "$fandom"
+        echo "Data extraction completed for $fandom.xml."
     fi
 
     if [ "$step" = "3" ] || [ "$step" = "all" ]; then
         # Step 3: Run Python script to convert JSON to text
-        echo "Step 3: Converting JSON to JSONL format for $value..."
-        python3 Json2jsonl.py "$value/" "$value.jsonl"
-        echo "Conversion to JSONL completed for $value."
+        echo "Step 3: Converting JSON to JSONL format for $fandom..."
+        python3 Json2jsonl.py "$dir_path" "$fandom.jsonl" "$fandom"
+        echo "Conversion to JSONL completed for $fandom."
     fi
 
     if [ "$step" = "4" ] || [ "$step" = "all" ]; then
         # Step 4: Run Python script to convert JSON to text
-        echo "Step 4: Cleaning the files from $value..."
-        python3 Clean.py "$value" "$dir_path"
-        echo "Cleaning of files is done for $value."
+        echo "Step 4: Cleaning the files from $fandom..."
+        python3 Clean.py "$fandom" "$dir_path"
+        echo "Cleaning of files is done for $fandom."
     fi
-
-    echo "All processing steps completed for $value."
+    
 done
 
 echo "--------------------------------------------------"
-echo "Processing completed for all provided values."
+echo "All selected processing steps completed for $fandom."
 echo "--------------------------------------------------"

@@ -69,15 +69,18 @@ def get_url(urlbase, uid):
 
 def clean(extractor, text, expand_templates=False, html_safe=True):
     """
-    Transforms wiki markup. If the command line flag --escapedoc is set then the text is also escaped
-    @see https://www.mediawiki.org/wiki/Help:Formatting
-    :param extractor: the Extractor t use.
-    :param text: the text to clean.
-    :param expand_templates: whether to perform template expansion.
-    :param html_safe: whether to convert reserved HTML characters to entities.
-    @return: the cleaned text.
-    """
+    Transforms wiki markup to cleaned text. Handles the expansion of templates,
+    removal of unwanted elements, and formatting.
 
+    Args:
+        extractor: The Extractor object to use.
+        text: The raw wiki text to clean.
+        expand_templates: Flag to determine if templates should be expanded.
+        html_safe: Flag to determine if HTML entities should be escaped.
+
+    Returns:
+        The cleaned and formatted text.
+    """
     if expand_templates:
         # expand templates
         # See: http://www.mediawiki.org/wiki/Help:Templates
@@ -86,8 +89,11 @@ def clean(extractor, text, expand_templates=False, html_safe=True):
         # Drop transclusions (template, parser functions)
         text = dropNested(text, r'{{', r'}}')
 
+    # The below line was commented out because this was dropping a lot of content.
+    # WE are going to have to find some other way to clean up the tables in the content.
     # Drop tables
-    text = dropNested(text, r'{\|', r'\|}')
+    #text = dropNested(text, r'{\|', r'\|}')
+    
 
     # replace external links
     text = replaceExternalLinks(text)
@@ -187,10 +193,29 @@ listItem = {'*': '<li>%s</li>', '#': '<li>%s</<li>', ';': '<dt>%s</dt>',
 
 
 def compact(text, mark_headers=False):
-    """Deal with headers, lists, empty sections, residuals of tables.
-    :param text: convert to HTML
     """
+    Process and compact the given text by handling headers, lists, 
+    empty sections, and residuals of tables, converting them to a 
+    structured format.
 
+    This function parses the text line-by-line and processes different 
+    kinds of formatting elements found in wiki-style text, such as 
+    section headers and lists. It handles the nesting of lists, ignores 
+    empty sections, and formats section headers. The output is a list of 
+    formatted text elements representing the structured content of the 
+    input text.
+
+    Args:
+        text (str): The input text to be processed. This is typically 
+        multiline text containing wiki-style formatting.
+        
+        mark_headers (bool, optional): If True, section headers will be 
+        prefixed with '## ' to mark them distinctly. Defaults to False.
+
+    Returns:
+        list: A list of strings, each representing a compacted and 
+        formatted element from the input text.
+    """
     page = []  # list of paragraph
     headers = {}  # Headers for unfilled sections
     emptySection = False  # empty sections are discarded
@@ -294,7 +319,26 @@ def compact(text, mark_headers=False):
 
 def dropNested(text, openDelim, closeDelim):
     """
-    A matching function for nested expressions, e.g. namespaces and tables.
+    Removes nested structures from the text based on the specified opening 
+    and closing delimiters. The function identifies and extracts nested 
+    sections and then removes them, returning the text with these sections 
+    omitted.
+
+    The method works by identifying spans of text enclosed by the given 
+    delimiters and treating them as nested structures. These structures 
+    could be, for example, nested curly braces for templates or HTML/XML tags. 
+    It handles cases of nested and unbalanced delimiters and ensures the 
+    integrity of the text structure outside these spans.
+
+    Args:
+        text (str): The text containing nested structures to be processed.
+        openDelim (str): The regex pattern string representing the opening 
+        delimiter of the nested structure.
+        closeDelim (str): The regex pattern string representing the closing 
+        delimiter of the nested structure.
+
+    Returns:
+        str: The text with the specified nested structures removed.
     """
     openRE = re.compile(openDelim, re.IGNORECASE)
     closeRE = re.compile(closeDelim, re.IGNORECASE)
@@ -381,11 +425,10 @@ wgUrlProtocols = [
 # as well as U+3000 is IDEOGRAPHIC SPACE for bug 19052
 EXT_LINK_URL_CLASS = r'[^][<>"\x00-\x20\x7F\s]'
 
-# IS THIS RYAN'S NEW REGEX? 
 ExtLinkBracketedRegex = re.compile(
     r'(?i)\[\(((' + '|'.join(wgUrlProtocols) + ')' + EXT_LINK_URL_CLASS + r'+)\s*([^\]\x00-\x08\x0a-\x1F]*?)\]',
     re.S | re.U)
-# IS THIS RYAN'S NEW REGEX?
+
 EXT_IMAGE_REGEX = re.compile(
     r"""^(http://|https://)([^][<>"\x00-\x20\x7F\s]+)
     /([A-Za-z0-9_.,~%\-+&;#*?!=()@\x80-\xFF]+)\.(gif|png|jpg|jpeg)$""",
@@ -393,6 +436,22 @@ EXT_IMAGE_REGEX = re.compile(
 
 
 def replaceExternalLinks(text):
+    """
+    Processes and replaces external links in the provided text with 
+    formatted HTML anchor tags or image tags.
+
+    This function scans the given text for external links using a regex pattern 
+    and replaces each link with a corresponding HTML anchor tag. If the link 
+    text is an image URL, it is replaced with an HTML image tag instead. The 
+    function handles special cases where links are bracketed and ensures 
+    proper HTML encoding of URLs.
+
+    Args:
+        text (str): The text containing external links to be processed.
+
+    Returns:
+        str: The text with external links replaced by HTML tags.
+    """
     s = ''
     cur = 0
     for m in ExtLinkBracketedRegex.finditer(text):

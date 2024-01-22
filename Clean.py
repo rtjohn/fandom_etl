@@ -1,32 +1,27 @@
+"""
+This script cleans text files in a specified directory by applying regex substitutions and writes the cleaned content to a new directory.
+"""
+
 import argparse
 import re
 import os
 
-# The code then does the following:
-# 1. Goes to that directory
-# 2. Creates a new sister directory with "_cleaned" appended
-# 3. Runs cleaned_scraped_files over all files in the original directory
-# 4. Writes the cleaned files to the _cleaned directory 
-
-def clean_scraped_files(file_path):
+def clean_scraped_files(file_path, patterns):
     """
     Cleans the provided text file by applying a series of regex substitutions.
+    
+    :param file_path: Path to the file to be cleaned.
+    :param patterns: A list of regex patterns for cleaning the text.
+    :return: Cleaned text as a string, or None if an error occurs.
     """
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
-            dirty_text = file.read()
-        # Combine multiple regex patterns into fewer steps for efficiency
-        patterns = [
-            r'"id": ', r'"revid": ', r'"url": ', r'"title": ', r'"text": ',
-            r'"https?://[^\s"]+"', r',\s*""', r'"\d+"', r'[{}]',
-            r'&lt;a\shref=\\"[a-zA-Z]+', r'a&gt;', r'%\d\d', r'"&gt;', r'&lt;', r'\\n', r'\\',
-            r', , ,', r'\/', r'\d\d\d\dDR', r'u2022', r'href="'
-        ]
-        for pattern in patterns:
-            clean_text = re.sub(pattern, '', dirty_text)
+            text = file.read()
 
-        return clean_text
-    
+        for pattern in patterns:
+            text = re.sub(pattern, '', text)
+
+        return text
     except IOError as e:
         print(f"An error occurred: {e}")
         return None
@@ -35,45 +30,76 @@ def clean_scraped_files(file_path):
 parser = argparse.ArgumentParser()
 parser.add_argument('input_fandom', help='Fandom\'s name')
 parser.add_argument('output_dir', help='Output directory path')
-
 args = parser.parse_args()
 
-fandom_site = args.input_fandom
-output_dir = args.output_dir
+# Compile regex patterns
+patterns = [r'"id": ',
+            r'"revid": ',
+            r'"url": ',
+            r'"title": ',
+            r'"text": ',
+            r'"https?://[^\s"]+"',
+            r',\s*""',
+            r'"\d+"',
+            r'[{}]',
+            r'&lt;a\shref=\\"[a-zA-Z]+',
+            r'a&gt;',
+            r'%\d\d',
+            r'"&gt;',
+            r'&lt;',
+            r'\\n',
+            r'\\',
+            r', , ,', 
+            r'\/',
+            r'\d\d\d\dDR',
+            r'u2022',
+            r'href="',
+            r'00fb',
+            r'\[http:www.amazon.com'
+            r'dp0786901187',
+            r'Amazon.com',
+            r'product page',
+            r'! colspan="\d" \|',
+            r'! colspan="\d"',
+            r'u00ad',
+            r'u2014',
+            r'!',
+            r'="[^"]*"',
+            r'u00b7']
 
-target_directory = os.path.join(args.output_dir, args.input_fandom+"_processed")
+def process_directory(source_dir, output_dir, patterns):
+    # Ensure the output directory exists
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-print(target_directory)
-
-# Go into the directory with the files
-# List all the directories in there
-directories = [d for d in os.listdir(target_directory) if os.path.isdir(os.path.join(target_directory, d))]
-
-# Create the _cleaned directory
-write_directory = os.makedirs(args.output_dir, args.input_fandom+"_cleaned", exist_ok=True)
-
-for d in directories:
-    file_path_a = os.path.join(directory_a, filename)
-    print(file_path_a)
-    processed_content = cleaning_scraped_files(file_path_a)
-    # Save the output to directory B
-    file_path_b = os.path.join(directory_b, filename)
-    with open(file_path_b, 'w') as file:
-        file.write(processed_content)
-
-
-
-
-
-# Go into each of those directories and run clean_scraped_files on each file
-# Write those cleaned files out to a new directory
-
-
-    
-
-# # Ensure directory B exists
-# os.makedirs(directory_b, exist_ok=True)
-
-# # Loop over all files in directory A
-# 
+    # Process each file in the source directory
+    for filename in os.listdir(source_dir):
+        file_path = os.path.join(source_dir, filename)
+        
+        # Check if it's a file and not a directory
+        if os.path.isfile(file_path):
+            processed_content = clean_scraped_files(file_path, patterns)
             
+            # Define the path for the output file
+            output_file_path = os.path.join(output_dir, filename)
+            
+            # Save the processed content to the new file
+            with open(output_file_path, 'w') as output_file:
+                output_file.write(processed_content)
+
+def find_subdirectories(directory):
+    # Find all subdirectories in the given directory
+    return [os.path.join(directory, d) for d in os.listdir(directory) if os.path.isdir(os.path.join(directory, d))]
+
+# Define your main directory
+# Determine directories for reading and writing files
+base_dir = os.path.join(args.output_dir, args.input_fandom + "_processed")
+output_subdir = os.path.join(args.output_dir, args.input_fandom + "_cleaned")
+os.makedirs(output_subdir, exist_ok=True)
+
+# Full path for the output directory
+output_dir = os.path.join(base_dir, output_subdir)
+
+# Find and process each subdirectory
+for source_dir in find_subdirectories(base_dir):
+    process_directory(source_dir, output_dir, patterns=patterns)
